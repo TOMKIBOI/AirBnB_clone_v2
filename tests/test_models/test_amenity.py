@@ -1,108 +1,106 @@
 #!/usr/bin/python3
-"""Module test_amenity
-
-This Module contains a tests for Amenity Class
+"""
+Contains the TestAmenityDocs classes
 """
 
-import sys
-import unittest
 from datetime import datetime
-from io import StringIO
-
-import pycodestyle
+import inspect
+import models
 from models import amenity
-from tests.test_models.test_base_model import BaseModel
-
+from models.base_model import BaseModel
+import pep8
+import unittest
 Amenity = amenity.Amenity
 
 
-class TestAmenityDocsAndStyle(unittest.TestCase):
-    """Tests Amenity class for documentation and style conformance"""
+class TestAmenityDocs(unittest.TestCase):
+    """Tests to check the documentation and style of Amenity class"""
+    @classmethod
+    def setUpClass(cls):
+        """Set up for the doc tests"""
+        cls.amenity_f = inspect.getmembers(Amenity, inspect.isfunction)
 
-    def test_pycodestyle(self):
-        """Tests compliance with pycodestyle"""
-        style = pycodestyle.StyleGuide(quiet=False)
-        result = style.check_files(
-            ["models/amenity.py", "tests/test_models/test_amenity.py"])
-        self.assertEqual(result.total_errors, 0)
+    def test_pep8_conformance_amenity(self):
+        """Test that models/amenity.py conforms to PEP8."""
+        pep8s = pep8.StyleGuide(quiet=True)
+        result = pep8s.check_files(['models/amenity.py'])
+        self.assertEqual(result.total_errors, 0,
+                         "Found code style errors (and warnings).")
 
-    def test_module_docstring(self):
-        """Tests whether the module is documented"""
-        self.assertTrue(len(amenity.__doc__) >= 1)
+    def test_pep8_conformance_test_amenity(self):
+        """Test that tests/test_models/test_amenity.py conforms to PEP8."""
+        pep8s = pep8.StyleGuide(quiet=True)
+        result = pep8s.check_files(['tests/test_models/test_amenity.py'])
+        self.assertEqual(result.total_errors, 0,
+                         "Found code style errors (and warnings).")
 
-    def test_class_docstring(self):
-        """Tests whether the class is documented"""
-        self.assertTrue(len(Amenity.__doc__) >= 1)
+    def test_amenity_module_docstring(self):
+        """Test for the amenity.py module docstring"""
+        self.assertIsNot(amenity.__doc__, None,
+                         "amenity.py needs a docstring")
+        self.assertTrue(len(amenity.__doc__) >= 1,
+                        "amenity.py needs a docstring")
 
-    def test_class_name(self):
-        """Test whether the class name is correct"""
-        self.assertEqual(Amenity.__name__, "Amenity")
+    def test_amenity_class_docstring(self):
+        """Test for the Amenity class docstring"""
+        self.assertIsNot(Amenity.__doc__, None,
+                         "Amenity class needs a docstring")
+        self.assertTrue(len(Amenity.__doc__) >= 1,
+                        "Amenity class needs a docstring")
+
+    def test_amenity_func_docstrings(self):
+        """Test for the presence of docstrings in Amenity methods"""
+        for func in self.amenity_f:
+            self.assertIsNot(func[1].__doc__, None,
+                             "{:s} method needs a docstring".format(func[0]))
+            self.assertTrue(len(func[1].__doc__) >= 1,
+                            "{:s} method needs a docstring".format(func[0]))
 
 
 class TestAmenity(unittest.TestCase):
-    """Test cases for Amenity Class"""
+    """Test the Amenity class"""
+    def test_is_subclass(self):
+        """Test that Amenity is a subclass of BaseModel"""
+        amenity = Amenity()
+        self.assertIsInstance(amenity, BaseModel)
+        self.assertTrue(hasattr(amenity, "id"))
+        self.assertTrue(hasattr(amenity, "created_at"))
+        self.assertTrue(hasattr(amenity, "updated_at"))
 
-    def setUp(self):
-        """creates a test object for other tests"""
-        self.test_obj = Amenity()
-        self.test_obj.name = "example"
+    def test_name_attr(self):
+        """Test that Amenity has attribute name, and it's as an empty string"""
+        amenity = Amenity()
+        self.assertTrue(hasattr(amenity, "name"))
+        if models.storage_t == 'db':
+            self.assertEqual(amenity.name, None)
+        else:
+            self.assertEqual(amenity.name, "")
 
-    def test_amenity_is_subclass_of_base_model(self):
-        self.assertTrue(issubclass(Amenity, BaseModel))
+    def test_to_dict_creates_dict(self):
+        """test to_dict method creates a dictionary with proper attrs"""
+        am = Amenity()
+        print(am.__dict__)
+        new_d = am.to_dict()
+        self.assertEqual(type(new_d), dict)
+        self.assertFalse("_sa_instance_state" in new_d)
+        for attr in am.__dict__:
+            if attr is not "_sa_instance_state":
+                self.assertTrue(attr in new_d)
+        self.assertTrue("__class__" in new_d)
 
-    def test_public_attributes_exist(self):
-        """tests wether the public instance attributes exist."""
-        req_att = ["id", "created_at", "updated_at", "name"]
-        for attrib in req_att:
-            self.assertTrue(hasattr(self.test_obj, attrib))
+    def test_to_dict_values(self):
+        """test that values in dict returned from to_dict are correct"""
+        t_format = "%Y-%m-%dT%H:%M:%S.%f"
+        am = Amenity()
+        new_d = am.to_dict()
+        self.assertEqual(new_d["__class__"], "Amenity")
+        self.assertEqual(type(new_d["created_at"]), str)
+        self.assertEqual(type(new_d["updated_at"]), str)
+        self.assertEqual(new_d["created_at"], am.created_at.strftime(t_format))
+        self.assertEqual(new_d["updated_at"], am.updated_at.strftime(t_format))
 
-    def test_public_attributes_have_correct_type(self):
-        """tests wether the public instance attributes exist."""
-        req_att = ["name"]
-        for attrib in req_att:
-            self.assertTrue(type(getattr(self.test_obj, attrib)), str)
-
-    def test_bas_str_should_print_formatted_output(self):
-        """__str__ should print [<class name>] (<self.id>) <self.__dict__>"""
-        self.test_obj.my_number = 89
-        cls_name = Amenity.__name__
-        id = self.test_obj.id
-        expected = f"[{cls_name}] ({id}) {self.test_obj.__dict__}"
-        output = StringIO()
-        sys.stdout = output
-        print(self.test_obj)
-        sys.stdout = sys.__stdout__
-        self.assertEqual(output.getvalue().strip("\n"), expected)
-
-    def test_to_dict_returns_a_dictionary_of_attributes(self):
-        """to_dict should return a dictionary containing all key/value of
-        self.__dict__
-        """
-        temp_dict = self.test_obj.to_dict()
-        self.assertIsInstance(temp_dict, dict)
-        keys = temp_dict.keys()
-
-        for k, v in self.test_obj.__dict__.items():
-            self.assertIn(k, keys)
-            if not isinstance(self.test_obj.__dict__[k], datetime):
-                self.assertEqual(temp_dict[k], v)
-
-    def test_to_dict_has_a_key_with_the_class_name(self):
-        """to_dict must have a key of __class__ with a value of the classes
-        name
-        """
-        temp_dict = self.test_obj.to_dict()
-        self.assertIn("__class__", temp_dict.keys())
-        self.assertEqual(temp_dict["__class__"],
-                         Amenity.__name__)
-
-    def test_init_with_kwargs(self):
-        """test that Amenity can be constructed from kwargs"""
-        temp_obj_2 = Amenity(**self.test_obj.to_dict())
-
-        for k, v in self.test_obj.__dict__.items():
-            self.assertEqual(v, temp_obj_2.__dict__[k])
-
-
-if __name__ == "__main__":
-    unittest.main()
+    def test_str(self):
+        """test that the str method has the correct output"""
+        amenity = Amenity()
+        string = "[Amenity] ({}) {}".format(amenity.id, amenity.__dict__)
+        self.assertEqual(string, str(amenity))
